@@ -1,14 +1,10 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
+import {
+  initSDK,
+  createInstance,
+  SepoliaConfig
+} from "https://cdn.zama.ai/relayer-sdk-js/0.2.0/relayer-sdk-js.js";
 import { ethers } from "ethers";
-
-// Declare global window types for Zama SDK
-declare global {
-  interface Window {
-    initSDK: () => Promise<void>;
-    createInstance: (config: any) => Promise<any>;
-    SepoliaConfig: any;
-  }
-}
 
 let fheInstance: any = null;
 
@@ -39,17 +35,17 @@ export async function initializeFHE() {
   if (fheInstance) return fheInstance;
 
   console.log("🔐 Initializing Zama FHE SDK...");
-  await window.initSDK();
+  await initSDK();
 
   const config = {
-    ...window.SepoliaConfig,
+    ...SepoliaConfig,
     relayerUrl: "https://relayer.testnet.zama.cloud", // ✅ Latest relayer
     network: window.ethereum
   };
 
   console.log("🔧 Using FHE config:", config);
 
-  fheInstance = await window.createInstance(config);
+  fheInstance = await createInstance(config);
   console.log("✅ Zama FHE initialized successfully");
   return fheInstance;
 }
