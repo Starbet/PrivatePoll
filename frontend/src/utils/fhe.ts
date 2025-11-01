@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
-import {
-  initSDK,
-  createInstance,
-  SepoliaConfig
-} from "https://cdn.zama.ai/relayer-sdk-js/0.2.0/relayer-sdk-js.js";
 import { ethers } from "ethers";
+
+// Declare global fhevmjs types
+declare global {
+  interface Window {
+    fhevmjs: {
+      createInstance: (config: any) => Promise<any>;
+    };
+  }
+}
 
 let fheInstance: any = null;
 
@@ -35,17 +39,19 @@ export async function initializeFHE() {
   if (fheInstance) return fheInstance;
 
   console.log("🔐 Initializing Zama FHE SDK...");
-  await initSDK();
 
-  const config = {
-    ...SepoliaConfig,
-    relayerUrl: "https://relayer.testnet.zama.cloud", // ✅ Latest relayer
-    network: window.ethereum
-  };
+  // Wait for fhevmjs to be available
+  if (!window.fhevmjs) {
+    throw new Error("fhevmjs not loaded. Make sure the script is included in index.html");
+  }
 
-  console.log("🔧 Using FHE config:", config);
+  // Create instance for Sepolia testnet
+  fheInstance = await window.fhevmjs.createInstance({
+    chainId: 8009,
+    publicKey: '',
+    gatewayUrl: "https://gateway.sepolia.zama.ai/",
+  });
 
-  fheInstance = await createInstance(config);
   console.log("✅ Zama FHE initialized successfully");
   return fheInstance;
 }
