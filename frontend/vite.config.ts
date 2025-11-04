@@ -18,8 +18,7 @@ export default defineConfig({
     }
   },
   optimizeDeps: {
-    include: ['process', 'stream-browserify', 'browserify-zlib', 'util'],
-    exclude: ['https://cdn.zama.org/relayer-sdk-js/0.2.0/relayer-sdk-js.js']
+    include: ['process', 'stream-browserify', 'browserify-zlib', 'util']
   },
   build: {
     commonjsOptions: {
@@ -30,8 +29,7 @@ export default defineConfig({
         '@safe-global/safe-apps-provider',
         '@safe-global/safe-apps-sdk',
         '@safe-globalThis/safe-apps-provider',
-        '@safe-globalThis/safe-apps-sdk',
-        /^https:\/\/cdn\.zama\.org\/.*/
+        '@safe-globalThis/safe-apps-sdk'
       ]
     }
   },
