@@ -32,22 +32,45 @@ function hexToBytes(hex: string): Uint8Array {
    ⚙️ Initialize Zama FHE SDK (Testnet)
 ---------------------------------------------------------- */
 export async function initializeFHE() {
-  if (fheInstance) return fheInstance;
+  if (fheInstance) {
+    console.log("✅ Using cached FHE instance");
+    return fheInstance;
+  }
 
-  console.log("🔐 Initializing Zama FHE SDK...");
-  await initSDK();
+  try {
+    console.log("🔐 Initializing Zama FHE SDK...");
+    
+    // Check if window.ethereum is available
+    if (!window.ethereum) {
+      throw new Error("MetaMask or Web3 wallet not found. Please install MetaMask.");
+    }
 
-  const config = {
-    ...SepoliaConfig,
-    relayerUrl: "https://relayer.testnet.zama.cloud", // ✅ Latest relayer
-    network: window.ethereum
-  };
+    await initSDK();
+    console.log("✅ SDK initialized");
 
-  console.log("🔧 Using FHE config:", config);
+    const config = {
+      ...SepoliaConfig,
+      relayerUrl: "https://relayer.testnet.zama.cloud",
+      network: window.ethereum
+    };
 
-  fheInstance = await createInstance(config);
-  console.log("✅ Zama FHE initialized successfully");
-  return fheInstance;
+    console.log("🔧 Creating FHE instance with config:", config);
+
+    fheInstance = await createInstance(config);
+    
+    if (!fheInstance) {
+      throw new Error("Failed to create FHE instance - returned null or undefined");
+    }
+
+    console.log("✅ Zama FHE initialized successfully");
+    console.log("✅ FHE instance methods:", Object.keys(fheInstance));
+    
+    return fheInstance;
+  } catch (error: any) {
+    console.error("❌ FHE initialization failed:", error);
+    fheInstance = null; // Reset on failure
+    throw new Error(`Failed to initialize FHE: ${error.message}`);
+  }
 }
 
 /* ----------------------------------------------------------
@@ -460,29 +483,52 @@ export async function encryptVote(
   contractAddress: string,
   userAddress: string
 ): Promise<{ encryptedData: any; inputProof: any }> {
+  if (!fheInstance) {
+    throw new Error("fhevmjs not loaded. Make sure the script is included in index.html");
+  }
+
+  if (typeof fheInstance.createEncryptedInput !== 'function') {
+    throw new Error("FHE instance is invalid - missing createEncryptedInput method");
+  }
+
   console.log("🔐 Encrypting vote...");
+  console.log("  - Vote:", vote ? "YES" : "NO");
+  console.log("  - Contract:", contractAddress);
+  console.log("  - User:", userAddress);
   
-  // Convert boolean to number: 1 = yes, 0 = no
-  const voteValue = vote ? 1 : 0;
-  
-  const input = fheInstance.createEncryptedInput(contractAddress, userAddress);
-  input.add8(voteValue);
-  
-  const encrypted = await input.encrypt();
-  
-  // Convert to hex strings
-  const handleBytes = encrypted.handles[0] as Uint8Array;
-  const handleHex = '0x' + Array.from(handleBytes).map(b => (b as number).toString(16).padStart(2, '0')).join('');
-  
-  const proofBytes = encrypted.inputProof as Uint8Array;
-  const proofHex = '0x' + Array.from(proofBytes).map(b => (b as number).toString(16).padStart(2, '0')).join('');
-  
-  console.log("✅ Vote encrypted - Handle:", handleHex);
-  
-  return {
-    encryptedData: handleHex,
-    inputProof: proofHex
-  };
+  try {
+    // Convert boolean to number: 1 = yes, 0 = no
+    const voteValue = vote ? 1 : 0;
+    
+    const input = fheInstance.createEncryptedInput(contractAddress, userAddress);
+    input.add8(voteValue);
+    
+    console.log("🔒 Encrypting with FHE...");
+    const encrypted = await input.encrypt();
+    
+    if (!encrypted || !encrypted.handles || !encrypted.handles[0]) {
+      throw new Error("Encryption failed - invalid encrypted data returned");
+    }
+    
+    // Convert to hex strings
+    const handleBytes = encrypted.handles[0] as Uint8Array;
+    const handleHex = '0x' + Array.from(handleBytes).map(b => (b as number).toString(16).padStart(2, '0')).join('');
+    
+    const proofBytes = encrypted.inputProof as Uint8Array;
+    const proofHex = '0x' + Array.from(proofBytes).map(b => (b as number).toString(16).padStart(2, '0')).join('');
+    
+    console.log("✅ Vote encrypted successfully");
+    console.log("  - Handle:", handleHex.substring(0, 20) + "...");
+    console.log("  - Proof length:", proofHex.length);
+    
+    return {
+      encryptedData: handleHex,
+      inputProof: proofHex
+    };
+  } catch (error: any) {
+    console.error("❌ Vote encryption failed:", error);
+    throw new Error(`Failed to encrypt vote: ${error.message}`);
+  }
 }
 
 /* ----------------------------------------------------------
